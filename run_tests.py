@@ -132,8 +132,11 @@ def run_oxdna(binary, rundir, timeout):
         except subprocess.TimeoutExpired:
             rc = 'timeout'
     elapsed = time.time() - t0
-    with open(os.path.join(rundir, 'stdout.txt')) as f:
-        txt = f.read()
+    txt = ''
+    for name in ('stdout.txt', 'log.dat'):  # errors go to log_file when it is set
+        if os.path.isfile(os.path.join(rundir, name)):
+            with open(os.path.join(rundir, name), errors='replace') as f:
+                txt += f.read()
     err = None
     if rc != 0 or 'ERROR' in txt:
         lines = [l for l in txt.splitlines() if 'ERROR' in l]
@@ -509,7 +512,7 @@ def main():
             cres['checks'][stg] = {'status': status, 'message': msg, 'data': data}
         # expectations
         for name, chk in cres['checks'].items():
-            if name == 'inputs':
+            if name == 'inputs' or chk['status'] == SKIP:
                 continue
             reason = expectation(c, name.split('_')[0] if name.startswith('stat_') else name, args.backend)
             chk['expected_failure'] = reason
