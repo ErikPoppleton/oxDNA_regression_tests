@@ -1,28 +1,32 @@
 # oxDNA ANM regression tests
 
-Regression tests for the protein models of oxDNA (the anisotropic network models, "ANM") and their
-protein / nucleic-acid hybrids. They check that the current oxDNA reproduces the original
-implementation in the `anm-oxdna` fork, in which these models were written, and they are meant to be
-re-run during the refactor of the ANM code, then extended to CUDA and to oxNA.
+Regression tests for the protein models of oxDNA (the anisotropic network models, "ANM"), their
+protein / nucleic-acid hybrids, and oxNA (`NA`). On the CPU they check that the current oxDNA
+reproduces the original implementation in the `anm-oxdna` fork, where these models were written. For
+the oxNA-based models (`NANM`/`NACT`, `NA`), which have no original implementation, they check
+equivalence with the corresponding current models or compare with stored reference values. On the GPU
+they compare the CUDA build with the CPU build of the same code (see `cuda_tests.md`).
 
 | model | original code (`anm-oxdna`) | current oxDNA |
 |---|---|---|
 | protein ANM | `AC` | `AC` |
-| protein ANMT (ANM + backbone bending/torsion) | `ACT` | `DNACT` with a protein-only topology (no `ACT`) |
+| protein ANMT (ANM + backbone bending/torsion) | `ACT` | `ACT` (also `DNACT` with a protein-only topology) |
 | protein ANM + DNA (oxDNA2) | `DNANM` | `DNANM` |
 | protein ANMT + DNA | `DNACT` | `DNACT` |
 | protein ANM + RNA (oxRNA2) | `RNANM` | `RNANM` |
 | protein ANMT + RNA | `RNACT` | `RNACT` |
+| protein ANM/ANMT + DNA, RNA and DNA/RNA hybrids (oxNA) | - | `NANM`, `NACT` |
+| DNA + RNA + hybrids (oxNA) | - | `NA` |
 
 ## Running
 
 ```bash
 # 1. build the two codes (see scripts/; both build out of tree and leave the checkouts untouched)
 scripts/build_old.sh ~/software/anm-oxdna/oxDNA build/old             # -> build/old/bin/oxDNA
-scripts/build_new.sh f802bea4 build/new                               # -> build/new/build/bin/oxDNA
+scripts/build_new.sh anm_refactor build/new                           # -> build/new/build/bin/oxDNA
 
 # 2. run
-./run_tests.py --old build/old/bin/oxDNA --new build/new/build/bin/oxDNA            # full CPU suite, ~14 min on an 8-core laptop
+./run_tests.py --old build/old/bin/oxDNA --new build/new/build/bin/oxDNA            # full CPU suite, ~12 min on an 8-core laptop
 ./run_tests.py --old build/old/bin/oxDNA --new build/new/build/bin/oxDNA --quick    # quick subset, ~30 s
 ./run_tests.py --old ... --new ... --only 'kdpg/*' 'ubq_dna/DNANM' --stages energy0,det
 ./run_tests.py --old ... --new ... --list                                           # list the cases
@@ -36,10 +40,27 @@ per simulation (`<system>/<case>/<stage>/<old|new>[/repN]/` with the generated `
 Check statuses: `PASS`, `FAIL`, `ERROR` (a run crashed or the analysis failed), `XFAIL`/`XPASS`
 (failure expected / not expected, see `xfail` in the configs), `SKIP`.
 
-`--jobs` (default: all cores) sets how many simulations run at once. CUDA: see `cuda_tests.md`.
+`--jobs` (default: all cores) sets how many simulations run at once. CUDA (`--same-code
+--backend CUDA --cuda-precision mixed|double`, `--smoke`, `scripts/cluster_cuda.sh`): see `cuda_tests.md`.
 
-`reference_results/CPU_f802bea4.md` is the summary of the full CPU suite for oxDNA f802bea4 against
-anm-oxdna 015a855 (all checks pass except `kdpg/AC`, see "Known differences").
+Reference results (full CPU suite against anm-oxdna 015a855):
+- `reference_results/CPU_ca0afa94.md`: oxDNA anm_refactor ca0afa94. Everything passes; the only XFAILs
+  are the two DNACT hybrid `det` checks (difference 2 below).
+- `reference_results/CPU_f802bea4.md`: f802bea4. `kdpg/AC` fails (difference 1).
+
+### Kinds of cases
+
+- `"old_code": "original"` (default): `old` inputs with the `--old` binary (the original code) vs `new`
+  inputs with `--new`.
+- `"old_code": "current"`: both sides run with the `--new` binary, e.g. `NANM` with only DNA strands vs
+  `DNANM` (`ubq_dna_nt`, `ubq_rna_nt`). These must agree bit for bit (`energy0_tol = 0`, `det` tol = 0).
+- `"old_code": "stored"`: no reference code (`ubq_hybrid` NANM/NACT, the `na_*` oxNA systems). The test
+  side is compared with `systems/<s>/stored.json`, written by `--update-stored` (energy0 value, replica
+  averages and RMSFs, NVE drift). The stored values were made with seeds 1000+ and the checks run with
+  2000+, so `stat` is a genuine statistical comparison. Regenerate them only on purpose, e.g. after an
+  intended model change: `./run_tests.py --old X --new NEW --only 'ubq_hybrid/*' 'na_*' --update-stored`.
+- `--same-code`: both sides use the `new` inputs, plus `new@CUDA` substitutions such as AC -> DNANM. The
+  reference is a CPU build of the same code. Used for CPU vs CUDA.
 
 ## What is tested
 
@@ -54,10 +75,15 @@ Each system lives in `systems/<name>/` with its inputs and a `config.json` that 
 | `ubq_dna` | ubiquitin + 12-bp DNA duplex held in contact by a mutual trap | DNANM, DNACT |
 | `ubq_rna` | ubiquitin + 12-bp A-form RNA duplex held in contact by a mutual trap | RNANM, RNACT, each also with Debye-Hueckel switched off |
 | `cage` | the hybrid cage example (KDPG + 393-nt DNA cage, mutual traps) | DNANM, DNACT |
+| `ubq_dna_nt`, `ubq_rna_nt` | `ubq_dna`/`ubq_rna` with a new-style topology (`tools/to_new_topology.py`) | NANM vs DNANM/RNANM, NACT vs DNACT/RNACT (bit for bit) |
+| `ubq_hybrid` | ubiquitin + DNA:RNA hybrid duplex with a DNA overhang (oxDNA `test/CUDA/NA/hybrid_overhang`), mutual trap | NANM, NACT (stored) |
+| `na_dna_duplex`, `na_rna_duplex`, `na_hybrid_overhang`, `na_mixed` | the oxNA systems of oxDNA `test/CUDA/NA` (22-179 nt), T = 25 C, 0.5 M | NA (stored; CPU vs CUDA) |
+
+`ubiquitin` and `kdpg` also have an `ACT` case: original ACT vs current ACT.
 
 All runs: MD, `thermostat = john`, T = 300 K, dt = 0.002, double precision on the CPU.
 
-For every case the runner performs four checks:
+For every case the runner performs up to five checks (stages):
 
 1. **inputs** - the original code takes the protein bonds from the neighbour lists in the topology
    (plus the C-side neighbour), the current one from the parameter file: every spring of the `.par`
@@ -83,6 +109,14 @@ For every case the runner performs four checks:
    more than 4 sigma + 2 %. The nucleic-acid RMSF is reported but not tested (fraying of the duplex
    ends is rare and dominates it). For protein-only systems the simulated RMSF is also compared with
    the ANM prediction of the parameter generator (`anm_msf.dat`; informational: correlation and ratio).
+5. **nve** - 20 000 steps at dt = 0.001 with `thermostat = no`, from `equilibrated.dat`. The conserved
+   energy is U + K + ext/2: `force_energy` counts each mutual-trap pair twice. Its drift (linear fit
+   over the run) and its fluctuations about the fit must satisfy test <= 3 x ref + 2e-4 per particle.
+   On CUDA this directly tests the GPU forces, because the energies are computed on the CPU.
+
+In the `energy0` stage the external forces are switched off. `--quick` runs a subset with shorter
+runs (~30 s). `--smoke` runs 8 cases with `energy0` plus a 2000-step `nve`; it is meant for a fail-fast
+check of a new (CUDA) build.
 
 `--quick` runs `ubiquitin/{AC,ANMT,DNANM}`, `cln025/DNACT`, `ubq_dna/DNANM` and `ubq_rna/RNANM`
 with shorter `det`/`stat` runs.
@@ -102,23 +136,28 @@ with shorter `det`/`stat` runs.
 
 ## Known differences between the original and the current code
 
-1. **AC with several chains (current-code bug).** `ANMInteraction::pair_interaction_bonded` computes
+1. **AC with several chains (bug at f802bea4, fixed in anm_refactor 2dd5796a: `kdpg/AC` now passes).** `ANMInteraction::pair_interaction_bonded` computes
    `_computed_r = q->pos - p->pos` without the minimum image. oxDNA shifts every strand's centre of
    mass into the box when it reads a configuration (and periodically with `fix_diffusion`), so for a
    protein made of several chains the inter-chain springs see distances off by a box vector.
    `kdpg/AC`: step-0 energy 1720.74 per particle (original and numpy reference: 0.0821), the run
    blows up to NaN. Single-chain proteins and DNANM/DNACT (which use `min_image`) are not affected;
    `fix_diffusion = 0` hides it. The `test/DNANM/new_topology/kdpg_AC` reference value in oxDNA
-   (2164.606502) is this wrong number. Left as a FAIL in this suite.
+   (2164.606502) was this wrong number (corrected in 52f59157).
 2. **Protein torque from protein-nucleotide excluded volume (DNACT/RNACT).** The original adds the
    nucleotide's excluded-volume torque to the protein particle as well
    (`protein->torque -= protein->orientationT * -torquenuc`); the current code adds
    `(-r_hat * sigma/2) x F` about the protein centre, which is identically zero because the force is
    central (and uses `p->orientationT` instead of `protein->orientationT`, harmless only because the
-   term is zero). The current behaviour conserves angular momentum, the original does not. Effect:
-   identical energies, ANMT trajectories diverge at the first protein-nucleotide contact
-   (`ubq_dna/DNACT`, `cage/DNACT` det are XFAIL; the deviation starts on the residue in contact and
-   its backbone neighbours); averages (stat) agree within error.
+   term is zero). The current behaviour conserves angular momentum, the original does not. Since
+   bbbe1c00 the term is expressed in the amino acid's frame. It is still the near-zero central-force
+   torque: the original's nucleotide torque was deliberately not reproduced. Effect: identical
+   energies, and ANMT trajectories diverge at the first protein-nucleotide contact (`ubq_dna/DNACT`
+   and `cage/DNACT` det are XFAIL; the deviation starts on the residue in contact and its backbone
+   neighbours). Averages (stat) agree within error. The NVE check shows that the original is not
+   energy conserving: over 20 time units the conserved energy drifts by +7.2e-3 per particle for
+   `ubq_dna/DNACT` (original) vs -4.3e-5 (current), and by +2.3e-3 vs -1.6e-5 for `cage/DNACT`. The DNANM
+   versions conserve energy in both codes.
 3. **Debye-Hueckel in RNANM/RNACT.** The double counting of the DH term for RNA-RNA pairs was in the
    *pre-refactor current* oxDNA (`RNANMInteraction::pair_interaction_nonbonded` added `_debye_huckel`
    on top of `RNA2Interaction::pair_interaction_nonbonded`, which already includes it; removed in
@@ -126,7 +165,9 @@ with shorter `det`/`stat` runs.
    measure it: the DH energy (E - E with DH off) is identical in both codes (ratio 1.000), and the
    total energies, trajectories and averages agree.
 4. **Precision of the original ANMT.** See the det tolerances above (`sqrtf` in `normalize`).
-5. **Input formats.** The original needs the protein neighbour lists in the topology; the current
+5. **Parameter-file parsing.** At f802bea4 a malformed ANMT backbone line was silently skipped
+   (`catch(...) { continue; }`); fixed in 8929388c (line-by-line parser).
+6. **Input formats.** The original needs the protein neighbour lists in the topology; the current
    code ignores them and uses the `.par` file (hence the `inputs` check). The original RNACT and ACT
    only accept global `bending_k`/`torsion_k`; DNACT (both codes) and the current RNACT also accept
    per-spring kb kt in the par file. The original DNACT rejects par-file indices larger than the
@@ -140,13 +181,16 @@ regtest/                file readers and statistics (block averages, Kabsch alig
 systems/<name>/         inputs + config.json for each system
   conf.dat              starting (network-minimum) configuration
   perturbed.dat         energy0 configuration (tools/perturb_conf.py)
-  equilibrated.dat      start of the stat replicas (tools/equilibrate.py)
+  equilibrated.dat      start of the stat and nve runs (tools/equilibrate.py)
+  stored.json           stored reference values ("old_code": "stored" cases)
+  topology.top          new-style (5->3, type=...) topology
   anm.par / anmt.par    ANM and ANMT parameter files
   anm.top / mixed.top / hybrid.top   old-style topologies with neighbour lists
   anm_msf.dat           ANM-predicted fluctuations (protein-only systems)
 tools/                  generators (see below)
-scripts/                build scripts
+scripts/                build scripts; cluster_cuda.sh = build + run everything on a GPU node
 cuda_tests.md           instructions for the GPU runs
+reference_results/      summaries of full CPU runs
 ```
 
 ### How the inputs were made
@@ -164,6 +208,13 @@ python tools/make_hybrid.py systems/ubiquitin systems/ubq_dna/dna_duplex.dat sys
 python tools/make_hybrid.py systems/ubiquitin systems/ubq_rna/rna_duplex.dat systems/ubq_rna/rna_duplex.top systems/ubq_rna
 python tools/perturb_conf.py systems/X/conf.dat systems/X/perturbed.dat      # cln025: --sigma 0.03 --sigma-rot 0.2
 python tools/equilibrate.py <current oxDNA binary> ubiquitin cln025 kdpg ubq_dna ubq_rna cage
+# new-style topology versions (and the same for perturbed.dat / equilibrated.dat)
+python tools/to_new_topology.py systems/ubq_dna/hybrid.top systems/ubq_dna/conf.dat systems/ubq_dna_nt --types DNA --forces systems/ubq_dna/forces.txt
+python tools/to_new_topology.py systems/ubq_rna/hybrid.top systems/ubq_rna/conf.dat systems/ubq_rna_nt --types RNA --forces systems/ubq_rna/forces.txt
+# ubiquitin + DNA/RNA hybrid duplex (na_init.* = oxDNA test/CUDA/NA/hybrid_overhang/init.*)
+(cd tools && python make_hybrid_new.py ../systems/ubiquitin ../systems/ubq_hybrid/na_init.dat ../systems/ubq_hybrid/na_init.top ../systems/ubq_hybrid)
+python tools/equilibrate.py <current oxDNA binary> ubq_hybrid
+# na_*: init.dat/init.top of oxDNA test/CUDA/NA/<system> (as conf.dat/topology.top), perturbed with --sigma 0.01 --sigma-rot 0.05
 ```
 
 `tools/models.py` is a copy of `ANMUtils/models.py` with three changes, all marked `PATCHED`:
@@ -176,15 +227,14 @@ normalising it, while oxDNA normalises orientations on input, so the torsion ref
 
 - A new case: add an entry to `cases` in a system's `config.json`. Keys: `old`, `new` and `common`
   (input-file keys for each code / both; relative file names are resolved in the system directory),
-  `reference` (par file and kb/kt for the numpy check), `quick`, `xfail`
-  (`{"<check>": reason, "<check>@CUDA": reason, "*@CUDA": reason}`), `energy0_variants` /
-  `stat_variants` (extra runs with modified inputs).
+  `old@<backend>`/`new@<backend>` (substitutions for one backend, e.g. `new@CUDA`), `old_code`,
+  `reference` (par file and kb/kt for the numpy check), `quick`, `smoke`, `modes` (`original`,
+  `same_code`), `stages_enabled[@mode]`, `cuda_only`, `xfail`
+  (`{"<check>": reason, "<check>@CUDA_double": {"reason": ..., "match": "text the error must contain"},
+  "*@CUDA": reason, "*@same_code": reason}`), `energy0_variants` / `stat_variants` (extra runs with
+  modified inputs).
 - A new system: a directory with the input files and a `config.json` (copy one). `protein_range` and
   `nucleic_range` select the particles for the RMSF; `cost` (ms per step) only orders the jobs.
-- **oxNA / CPU vs CUDA of the same code.** Run the same binary family on both sides with
-  `--old-inputs new` so both sides use the `new` inputs, e.g.
-  `./run_tests.py --old oxDNA_cpu --new oxDNA_cuda --backend CUDA --old-inputs new --only 'oxna_*'`.
-  The `det` stage is skipped across backends; `energy0` and `stat` (mean energy and RMSF, which also
-  works for nucleic-acid-only systems by setting `protein_range` to the particles to analyse) are
-  what such a comparison needs. A system for the `NA` interaction only needs its inputs and a
-  `config.json` whose cases set `interaction_type = NA` in `common`.
+- **Systems without an original-code reference** (oxNA, new interactions): use `"old_code": "stored"`,
+  run once with `--update-stored`, and commit `stored.json`. Set `protein_range` to the particles
+  whose RMSF should be compared (for the `na_*` systems, a duplex).
