@@ -1,0 +1,99 @@
+{
+  "description": "CLN025 mini-protein (PDB 5AWL, 10 residues). Sparse 8 A network; ANMT with per-spring kb = kt = 30 written in the parameter file.",
+  "protein_range": [
+    0,
+    10
+  ],
+  "nucleic_range": null,
+  "energy0_conf": "perturbed.dat",
+  "cost": 0.005,
+  "common": {
+    "conf_file": "conf.dat"
+  },
+  "stages": {
+    "det": {
+      "steps": 5000,
+      "print_every": 500,
+      "tol": 1e-06,
+      "quick": {
+        "steps": 2000
+      }
+    },
+    "stat": {
+      "replicas": 8,
+      "steps": 300000,
+      "print_energy_every": 500,
+      "print_conf_interval": 500,
+      "quick": {
+        "steps": 60000
+      }
+    }
+  },
+  "cases": {
+    "AC": {
+      "description": "protein-only ANM: AC (old) vs AC (new)",
+      "old": {
+        "interaction_type": "AC",
+        "topology": "anm.top",
+        "parfile": "anm.par"
+      },
+      "new": {
+        "interaction_type": "AC",
+        "topology": "anm.top",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      },
+      "xfail": {
+        "*@CUDA": "no AC interaction on CUDA (use DNANM with a protein-only topology)"
+      }
+    },
+    "DNACT": {
+      "description": "protein-only ANMT with per-spring kb/kt: DNACT (old) vs DNACT (new)",
+      "quick": true,
+      "old": {
+        "interaction_type": "DNACT",
+        "topology": "mixed.top",
+        "parfile": "anmt.par"
+      },
+      "new": {
+        "interaction_type": "DNACT",
+        "topology": "mixed.top",
+        "parfile": "anmt.par"
+      },
+      "reference": {
+        "par": "anmt.par"
+      },
+      "xfail": {
+        "*@CUDA": "DNACT is not implemented on CUDA yet"
+      }
+    },
+    "RNACT": {
+      "description": "protein-only ANMT: RNACT (old) vs RNACT (new). The original RNACT only accepts global kb/kt, so this case uses anmt_global.par (same cosines, no per-spring constants) with bending_k = torsion_k = 30",
+      "old": {
+        "interaction_type": "RNACT",
+        "topology": "mixed.top",
+        "parfile": "anmt_global.par"
+      },
+      "new": {
+        "interaction_type": "RNACT",
+        "topology": "mixed.top",
+        "parfile": "anmt_global.par"
+      },
+      "reference": {
+        "par": "anmt_global.par",
+        "kb": 30.0,
+        "kt": 30.0
+      },
+      "xfail": {
+        "*@CUDA": "RNACT is not implemented on CUDA"
+      },
+      "common": {
+        "bending_k": 30.0,
+        "torsion_k": 30.0
+      }
+    }
+  },
+  "stat_conf": "equilibrated.dat"
+}

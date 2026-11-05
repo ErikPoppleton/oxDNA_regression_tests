@@ -1,0 +1,89 @@
+{
+  "description": "KDPG aldolase trimer (3 chains, 605 residues) from the original ANMUtils example (kdpgt.dat, kdpg.par, kdpgt.par, kdpg.top).",
+  "protein_range": [
+    0,
+    605
+  ],
+  "nucleic_range": null,
+  "energy0_conf": "perturbed.dat",
+  "cost": 2.3,
+  "common": {
+    "conf_file": "conf.dat"
+  },
+  "stages": {
+    "det": {
+      "steps": 1000,
+      "print_every": 200,
+      "tol": 1e-06
+    },
+    "stat": {
+      "replicas": 4,
+      "steps": 25000,
+      "print_energy_every": 250,
+      "print_conf_interval": 250
+    }
+  },
+  "cases": {
+    "AC": {
+      "description": "multi-chain protein-only ANM: AC (old) vs AC (new)",
+      "old": {
+        "interaction_type": "AC",
+        "topology": "anm.top",
+        "parfile": "anm.par"
+      },
+      "new": {
+        "interaction_type": "AC",
+        "topology": "anm.top",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      },
+      "xfail": {
+        "*@CUDA": "no AC interaction on CUDA (use DNANM with a protein-only topology)"
+      }
+    },
+    "ANMT": {
+      "description": "multi-chain protein-only ANMT: ACT (old) vs DNACT with a protein-only topology (new)",
+      "old": {
+        "interaction_type": "ACT",
+        "topology": "anm.top",
+        "parfile": "anmt.par"
+      },
+      "new": {
+        "interaction_type": "DNACT",
+        "topology": "mixed.top",
+        "parfile": "anmt.par"
+      },
+      "common": {
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      },
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "xfail": {
+        "*@CUDA": "DNACT is not implemented on CUDA yet"
+      }
+    },
+    "DNANM": {
+      "description": "multi-chain protein-only ANM through DNANM: DNANM (old) vs DNANM (new)",
+      "old": {
+        "interaction_type": "DNANM",
+        "topology": "mixed.top",
+        "parfile": "anm.par"
+      },
+      "new": {
+        "interaction_type": "DNANM",
+        "topology": "mixed.top",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      }
+    }
+  },
+  "stat_conf": "equilibrated.dat"
+}

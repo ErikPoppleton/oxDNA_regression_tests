@@ -1,0 +1,70 @@
+{
+  "description": "Ubiquitin (ANM/ANMT from systems/ubiquitin) next to a 12-bp DNA duplex (utils/generate-sa.py), held in contact by a mutual trap. Protein first in the topology.",
+  "protein_range": [
+    0,
+    76
+  ],
+  "nucleic_range": [
+    76,
+    100
+  ],
+  "energy0_conf": "perturbed.dat",
+  "cost": 0.14,
+  "common": {
+    "conf_file": "conf.dat",
+    "topology": "hybrid.top",
+    "external_forces": 1,
+    "external_forces_file": "forces.txt",
+    "dt": 0.002
+  },
+  "stages": {
+    "det": {
+      "steps": 500,
+      "print_every": 50,
+      "tol": 0.0002
+    },
+    "stat": {
+      "replicas": 6,
+      "steps": 80000,
+      "print_energy_every": 400,
+      "print_conf_interval": 400,
+      "z_energy": 4.5,
+      "quick": {
+        "steps": 20000,
+        "replicas": 4
+      }
+    }
+  },
+  "cases": {
+    "DNANM": {
+      "description": "protein + DNA: DNANM (old) vs DNANM (new)",
+      "quick": true,
+      "common": {
+        "interaction_type": "DNANM",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      }
+    },
+    "DNACT": {
+      "description": "protein + DNA: DNACT (old) vs DNACT (new)",
+      "common": {
+        "interaction_type": "DNACT",
+        "parfile": "anmt.par",
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      },
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "xfail": {
+        "*@CUDA": "DNACT is not implemented on CUDA yet",
+        "det": "the original code adds the nucleotide's excluded-volume torque to the protein particle (protein->torque -= protein->orientationT * -torquenuc); the current code adds (r x F) about the protein centre, which is zero for this central force, so ANMT trajectories diverge as soon as a protein-nucleotide contact occurs"
+      }
+    }
+  },
+  "stat_conf": "equilibrated.dat"
+}

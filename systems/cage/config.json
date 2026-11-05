@@ -1,0 +1,65 @@
+{
+  "description": "Hybrid cage: KDPG trimer (605 residues) attached to a DNA cage (393 nucleotides) by mutual traps, from examples/DNANM/hybrid_cage. ANMT parameters added with tools/add_anmt_angles.py.",
+  "protein_range": [
+    0,
+    605
+  ],
+  "nucleic_range": [
+    605,
+    998
+  ],
+  "energy0_conf": "perturbed.dat",
+  "cost": 3.0,
+  "common": {
+    "conf_file": "conf.dat",
+    "topology": "hybrid.top",
+    "external_forces": 1,
+    "external_forces_file": "forces.txt",
+    "dt": 0.002
+  },
+  "stages": {
+    "det": {
+      "steps": 300,
+      "print_every": 50,
+      "tol": 0.002
+    },
+    "stat": {
+      "replicas": 4,
+      "steps": 15000,
+      "print_energy_every": 150,
+      "print_conf_interval": 150,
+      "z_energy": 4.5
+    }
+  },
+  "cases": {
+    "DNANM": {
+      "description": "hybrid cage: DNANM (old) vs DNANM (new)",
+      "common": {
+        "interaction_type": "DNANM",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      }
+    },
+    "DNACT": {
+      "description": "hybrid cage: DNACT (old) vs DNACT (new)",
+      "common": {
+        "interaction_type": "DNACT",
+        "parfile": "anmt.par",
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      },
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "xfail": {
+        "*@CUDA": "DNACT is not implemented on CUDA yet",
+        "det": "the original code adds the nucleotide's excluded-volume torque to the protein particle (protein->torque -= protein->orientationT * -torquenuc); the current code adds (r x F) about the protein centre, which is zero for this central force, so ANMT trajectories diverge as soon as a protein-nucleotide contact occurs"
+      }
+    }
+  },
+  "stat_conf": "equilibrated.dat"
+}

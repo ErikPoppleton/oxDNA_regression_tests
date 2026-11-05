@@ -1,0 +1,92 @@
+{
+  "description": "Ubiquitin (ANM/ANMT from systems/ubiquitin) next to a 12-bp A-form RNA duplex (tools/make_rna_duplex.py), held in contact by a mutual trap. Protein first in the topology.",
+  "protein_range": [
+    0,
+    76
+  ],
+  "nucleic_range": [
+    76,
+    100
+  ],
+  "energy0_conf": "perturbed.dat",
+  "cost": 0.14,
+  "common": {
+    "conf_file": "conf.dat",
+    "topology": "hybrid.top",
+    "external_forces": 1,
+    "external_forces_file": "forces.txt",
+    "dt": 0.002
+  },
+  "stages": {
+    "det": {
+      "steps": 500,
+      "print_every": 50,
+      "tol": 0.0002
+    },
+    "stat": {
+      "replicas": 6,
+      "steps": 80000,
+      "print_energy_every": 400,
+      "print_conf_interval": 400,
+      "z_energy": 4.5,
+      "quick": {
+        "steps": 20000,
+        "replicas": 4
+      }
+    }
+  },
+  "cases": {
+    "RNANM": {
+      "description": "protein + RNA: RNANM (old) vs RNANM (new)",
+      "quick": true,
+      "common": {
+        "interaction_type": "RNANM",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      },
+      "energy0_variants": {
+        "dh_off": {
+          "dh_strength": 1e-12
+        }
+      },
+      "stat_variants": {
+        "dh_off": {
+          "dh_strength": 1e-12
+        }
+      },
+      "xfail": {
+        "*@CUDA": "RNANM is not implemented on CUDA"
+      }
+    },
+    "RNACT": {
+      "description": "protein + RNA: RNACT (old) vs RNACT (new). No protein-RNA contact occurs within the 500 det steps, so det passes despite the protein-torque difference seen in the DNACT hybrids (it diverges from ~step 600 in a 1000-step run)",
+      "common": {
+        "interaction_type": "RNACT",
+        "parfile": "anmt.par",
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      },
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "energy0_variants": {
+        "dh_off": {
+          "dh_strength": 1e-12
+        }
+      },
+      "stat_variants": {
+        "dh_off": {
+          "dh_strength": 1e-12
+        }
+      },
+      "xfail": {
+        "*@CUDA": "RNACT is not implemented on CUDA"
+      }
+    }
+  },
+  "stat_conf": "equilibrated.dat"
+}
