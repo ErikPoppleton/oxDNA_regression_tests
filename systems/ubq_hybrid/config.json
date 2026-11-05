@@ -1,0 +1,96 @@
+{
+  "description": "Ubiquitin + DNA:RNA hybrid duplex with a DNA overhang (test/CUDA/NA/hybrid_overhang, relaxed with the CPU NA code), mutual trap, new-style topology (tools/make_hybrid_new.py). No original-code reference: on the CPU the results are compared with values stored in stored.json; on CUDA with the CPU build of the same code.",
+  "protein_range": [
+    0,
+    76
+  ],
+  "nucleic_range": [
+    76,
+    106
+  ],
+  "energy0_conf": "perturbed.dat",
+  "stat_conf": "equilibrated.dat",
+  "cost": 0.2,
+  "common": {
+    "conf_file": "conf.dat",
+    "topology": "topology.top",
+    "external_forces": 1,
+    "external_forces_file": "forces.txt",
+    "dt": 0.002
+  },
+  "stages": {
+    "stat": {
+      "replicas": 6,
+      "steps": 80000,
+      "print_energy_every": 400,
+      "print_conf_interval": 400,
+      "z_energy": 4.5,
+      "quick": {
+        "steps": 20000,
+        "replicas": 4
+      }
+    },
+    "nve": {
+      "steps": 20000,
+      "print_every": 100,
+      "dt": 0.001,
+      "smoke": {
+        "steps": 2000,
+        "print_every": 20
+      }
+    }
+  },
+  "cases": {
+    "NANM": {
+      "description": "protein ANM + DNA/RNA (NANM)",
+      "old_code": "stored",
+      "common": {
+        "interaction_type": "NANM",
+        "parfile": "anm.par"
+      },
+      "reference": {
+        "par": "anm.par"
+      },
+      "smoke": true,
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "stages_enabled@original": [
+        "energy0",
+        "stat",
+        "nve"
+      ]
+    },
+    "NACT": {
+      "description": "protein ANMT + DNA/RNA (NACT)",
+      "old_code": "stored",
+      "common": {
+        "interaction_type": "NACT",
+        "parfile": "anmt.par",
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      },
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "quick": true,
+      "smoke": true,
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "stages_enabled@original": [
+        "energy0",
+        "stat",
+        "nve"
+      ]
+    }
+  }
+}

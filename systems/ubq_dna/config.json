@@ -33,6 +33,15 @@
         "steps": 20000,
         "replicas": 4
       }
+    },
+    "nve": {
+      "steps": 20000,
+      "print_every": 100,
+      "dt": 0.001,
+      "smoke": {
+        "steps": 2000,
+        "print_every": 20
+      }
     }
   },
   "cases": {
@@ -45,6 +54,12 @@
       },
       "reference": {
         "par": "anm.par"
+      },
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
       }
     },
     "DNACT": {
@@ -61,9 +76,13 @@
         "kt": 20.0
       },
       "xfail": {
-        "*@CUDA": "DNACT is not implemented on CUDA yet",
-        "det": "the original code adds the nucleotide's excluded-volume torque to the protein particle (protein->torque -= protein->orientationT * -torquenuc); the current code adds (r x F) about the protein centre, which is zero for this central force, so ANMT trajectories diverge as soon as a protein-nucleotide contact occurs"
-      }
+        "det": "by design: the original code also gives the amino acid the nucleotide's excluded-volume torque (protein->torque -= protein->orientationT * -torquenuc), which does not conserve angular momentum or energy (see the nve check of this case: the original drifts); the current code applies only (r x F) about the amino-acid centre in the amino acid's frame (bbbe1c00), which is ~0 for this central force, so ANMT trajectories diverge at the first protein-nucleotide contact",
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "smoke": true
     }
   },
   "stat_conf": "equilibrated.dat"

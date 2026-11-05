@@ -27,11 +27,20 @@
       "quick": {
         "steps": 20000
       }
+    },
+    "nve": {
+      "steps": 20000,
+      "print_every": 100,
+      "dt": 0.001,
+      "smoke": {
+        "steps": 2000,
+        "print_every": 20
+      }
     }
   },
   "cases": {
     "AC": {
-      "description": "protein-only ANM: AC (old) vs AC (new)",
+      "description": "protein-only ANM: AC (old) vs AC (new). On CUDA: DNANM with the protein-only topology (no CUDA AC) (not run with --same-code: on CUDA it is the same simulation as another case of this system)",
       "quick": true,
       "old": {
         "interaction_type": "AC",
@@ -47,11 +56,21 @@
         "par": "anm.par"
       },
       "xfail": {
-        "*@CUDA": "no AC interaction on CUDA (use DNANM with a protein-only topology)"
-      }
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "new@CUDA": {
+        "interaction_type": "DNANM",
+        "topology": "mixed.top"
+      },
+      "modes": [
+        "original"
+      ]
     },
     "ANMT": {
-      "description": "protein-only ANMT: ACT (old) vs DNACT with a protein-only topology (new)",
+      "description": "protein-only ANMT: ACT (old) vs DNACT with a protein-only topology (new) (not run with --same-code: on CUDA it is the same simulation as another case of this system)",
       "quick": true,
       "old": {
         "interaction_type": "ACT",
@@ -73,8 +92,14 @@
         "kt": 20.0
       },
       "xfail": {
-        "*@CUDA": "DNACT is not implemented on CUDA yet"
-      }
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "modes": [
+        "original"
+      ]
     },
     "DNACT": {
       "description": "protein-only ANMT through the hybrid interaction: DNACT (old) vs DNACT (new)",
@@ -98,8 +123,12 @@
         "kt": 20.0
       },
       "xfail": {
-        "*@CUDA": "DNACT is not implemented on CUDA yet"
-      }
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "smoke": true
     },
     "DNANM": {
       "description": "protein-only ANM through the hybrid interaction: DNANM (old) vs DNANM (new)",
@@ -116,7 +145,14 @@
       },
       "reference": {
         "par": "anm.par"
-      }
+      },
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "smoke": true
     },
     "RNANM": {
       "description": "protein-only ANM through RNANM: RNANM (old) vs RNANM (new)",
@@ -134,7 +170,10 @@
         "par": "anm.par"
       },
       "xfail": {
-        "*@CUDA": "RNANM is not implemented on CUDA"
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
       }
     },
     "RNACT": {
@@ -159,8 +198,47 @@
         "kt": 20.0
       },
       "xfail": {
-        "*@CUDA": "RNACT is not implemented on CUDA"
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
       }
+    },
+    "ACT": {
+      "description": "protein-only ANMT: ACT (old) vs ACT (new). On CUDA: DNACT with the protein-only topology (no CUDA ACT) (not run with --same-code: on CUDA it is the same simulation as another case of this system)",
+      "quick": true,
+      "old": {
+        "interaction_type": "ACT",
+        "topology": "anm.top",
+        "parfile": "anmt.par"
+      },
+      "new": {
+        "interaction_type": "ACT",
+        "topology": "anm.top",
+        "parfile": "anmt.par"
+      },
+      "common": {
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      },
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "new@CUDA": {
+        "interaction_type": "DNACT",
+        "topology": "mixed.top"
+      },
+      "modes": [
+        "original"
+      ]
     }
   },
   "stat_conf": "equilibrated.dat"

@@ -1,0 +1,18 @@
+{
+type = mutual_trap
+particle = 34
+ref_particle = 93
+stiff = 1
+r0 = 0.9970
+PBC = 1
+}
+
+{
+type = mutual_trap
+particle = 93
+ref_particle = 34
+stiff = 1
+r0 = 0.9970
+PBC = 1
+}
+

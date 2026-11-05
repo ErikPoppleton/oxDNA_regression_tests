@@ -1,0 +1,109 @@
+{
+  "description": "ubq_rna converted to a new-style topology (tools/to_new_topology.py, type=peptide/RNA). NANM/NACT with only RNA strands must reproduce RNANM/RNACT exactly.",
+  "protein_range": [
+    0,
+    76
+  ],
+  "nucleic_range": [
+    76,
+    100
+  ],
+  "energy0_conf": "perturbed.dat",
+  "stat_conf": "equilibrated.dat",
+  "cost": 0.14,
+  "common": {
+    "conf_file": "conf.dat",
+    "topology": "topology.top",
+    "external_forces": 1,
+    "external_forces_file": "forces.txt",
+    "dt": 0.002
+  },
+  "stages": {
+    "det": {
+      "steps": 1000,
+      "print_every": 100,
+      "tol": 0
+    },
+    "stat": {
+      "replicas": 6,
+      "steps": 80000,
+      "print_energy_every": 400,
+      "print_conf_interval": 400,
+      "z_energy": 4.5,
+      "quick": {
+        "steps": 20000,
+        "replicas": 4
+      }
+    },
+    "nve": {
+      "steps": 20000,
+      "print_every": 100,
+      "dt": 0.001,
+      "smoke": {
+        "steps": 2000,
+        "print_every": 20
+      }
+    }
+  },
+  "cases": {
+    "NANM": {
+      "description": "NANM (only RNA strands) vs RNANM, both with the current code",
+      "old_code": "current",
+      "old": {
+        "interaction_type": "RNANM",
+        "parfile": "anm.par"
+      },
+      "new": {
+        "interaction_type": "NANM",
+        "parfile": "anm.par"
+      },
+      "energy0_tol": 0,
+      "stages_enabled@original": [
+        "energy0",
+        "det"
+      ],
+      "reference": {
+        "par": "anm.par"
+      },
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "quick": true
+    },
+    "NACT": {
+      "description": "NACT (only RNA strands) vs RNACT, both with the current code",
+      "old_code": "current",
+      "old": {
+        "interaction_type": "RNACT",
+        "parfile": "anmt.par"
+      },
+      "new": {
+        "interaction_type": "NACT",
+        "parfile": "anmt.par"
+      },
+      "energy0_tol": 0,
+      "stages_enabled@original": [
+        "energy0",
+        "det"
+      ],
+      "reference": {
+        "par": "anmt.par",
+        "kb": 20.0,
+        "kt": 20.0
+      },
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "common": {
+        "bending_k": 20.0,
+        "torsion_k": 20.0
+      }
+    }
+  }
+}

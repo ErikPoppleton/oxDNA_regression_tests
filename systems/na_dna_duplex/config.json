@@ -1,0 +1,57 @@
+{
+  "description": "oxNA dna_duplex (22 nucleotides) from oxDNA test/CUDA/NA (relaxed with the CPU code). On the CPU: regression against stored.json; on CUDA: CPU vs GPU of the same build.",
+  "protein_range": [
+    0,
+    22
+  ],
+  "nucleic_range": null,
+  "energy0_conf": "perturbed.dat",
+  "stat_conf": "conf.dat",
+  "cost": 0.15,
+  "common": {
+    "conf_file": "conf.dat",
+    "topology": "topology.top",
+    "interaction_type": "NA",
+    "salt_concentration": 0.5,
+    "use_average_seq": "true",
+    "T": "25C",
+    "dt": 0.002,
+    "diff_coeff": 2.5,
+    "newtonian_steps": 103
+  },
+  "stages": {
+    "stat": {
+      "replicas": 6,
+      "steps": 100000,
+      "print_energy_every": 500,
+      "print_conf_interval": 500,
+      "z_energy": 4.5,
+      "quick": {
+        "steps": 20000,
+        "replicas": 4
+      }
+    },
+    "nve": {
+      "steps": 20000,
+      "print_every": 100,
+      "dt": 0.001,
+      "smoke": {
+        "steps": 2000,
+        "print_every": 20
+      }
+    }
+  },
+  "cases": {
+    "NA": {
+      "description": "oxNA dna_duplex",
+      "old_code": "stored",
+      "quick": false,
+      "smoke": false,
+      "stages_enabled@original": [
+        "energy0",
+        "stat",
+        "nve"
+      ]
+    }
+  }
+}

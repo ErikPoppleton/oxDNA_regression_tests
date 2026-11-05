@@ -27,11 +27,20 @@
       "quick": {
         "steps": 60000
       }
+    },
+    "nve": {
+      "steps": 20000,
+      "print_every": 100,
+      "dt": 0.001,
+      "smoke": {
+        "steps": 2000,
+        "print_every": 20
+      }
     }
   },
   "cases": {
     "AC": {
-      "description": "protein-only ANM: AC (old) vs AC (new)",
+      "description": "protein-only ANM: AC (old) vs AC (new). On CUDA: DNANM with the protein-only topology (no CUDA AC)",
       "old": {
         "interaction_type": "AC",
         "topology": "anm.top",
@@ -46,7 +55,14 @@
         "par": "anm.par"
       },
       "xfail": {
-        "*@CUDA": "no AC interaction on CUDA (use DNANM with a protein-only topology)"
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
+      },
+      "new@CUDA": {
+        "interaction_type": "DNANM",
+        "topology": "mixed.top"
       }
     },
     "DNACT": {
@@ -66,7 +82,10 @@
         "par": "anmt.par"
       },
       "xfail": {
-        "*@CUDA": "DNACT is not implemented on CUDA yet"
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
       }
     },
     "RNACT": {
@@ -86,12 +105,15 @@
         "kb": 30.0,
         "kt": 30.0
       },
-      "xfail": {
-        "*@CUDA": "RNACT is not implemented on CUDA"
-      },
       "common": {
         "bending_k": 30.0,
         "torsion_k": 30.0
+      },
+      "xfail": {
+        "*@CUDA_double": {
+          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
+          "match": "use_edge"
+        }
       }
     }
   },
