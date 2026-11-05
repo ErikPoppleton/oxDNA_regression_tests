@@ -75,7 +75,6 @@ Typical CPU values (laptop): NVE drift 1e-5 to 4e-4 per particle over 20 time un
 |---|---|---|
 | mixed | all ANM cases (DNANM, DNACT, RNANM, RNACT, NANM, NACT; protein only, DNA/RNA hybrids, cage, DNA+RNA+protein) and all oxNA (`na_*`) cases | PASS |
 | double | `na_*` (oxNA) | PASS |
-| double | every ANM case | XFAIL: the ANM interactions require `use_edge = true` (`CUDAANMInteraction.cu`: "The protein (ANM) interactions require use_edge = true on CUDA"), and `use_edge` is not allowed in double precision (`MD_CUDABackend.cu`: "use_edge and double precision are not compatible"). Only an error that mentions `use_edge` counts as the expected failure; any other error is reported as ERROR. |
 
 Statuses: PASS / FAIL (the comparison failed) / ERROR (a run crashed: see its `log.dat`) / XFAIL (expected failure) /
 XPASS (expected to fail but passed: e.g. once ANM works in double precision, remove the `*@CUDA_double`

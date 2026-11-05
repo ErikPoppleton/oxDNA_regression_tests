@@ -2,3 +2,6 @@ build/
 results/
 __pycache__/
 *.pyc
+tools/cuda_host_emulation/test_anm_device
+tools/cuda_host_emulation/test_anm_kernels
+tools/cuda_host_emulation/copy_model.inc

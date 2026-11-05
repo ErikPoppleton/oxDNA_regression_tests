@@ -145,7 +145,7 @@ if [ -x "$MIXED" ]; then
 fi
 
 if [ $STATUS -eq 0 ] || [ "${CONTINUE_ON_SMOKE_FAILURE:-0}" = "1" ]; then
-    # 3. CUDA double precision build (only the NA cases can run: the ANM ones need use_edge)
+    # 3. CUDA double precision build (use_edge = false: the neighbour-matrix kernels)
     if [ "${SKIP_DOUBLE:-0}" != "1" ]; then
         build cuda_double -DCUDA=ON -DCUDA_DOUBLE=ON || STATUS=1
     fi

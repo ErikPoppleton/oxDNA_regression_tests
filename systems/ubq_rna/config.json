@@ -64,12 +64,6 @@
         "dh_off": {
           "dh_strength": 1e-12
         }
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
       }
     },
     "RNACT": {
@@ -93,12 +87,6 @@
       "stat_variants": {
         "dh_off": {
           "dh_strength": 1e-12
-        }
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
         }
       },
       "smoke": true

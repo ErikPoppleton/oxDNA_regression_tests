@@ -54,12 +54,6 @@
       "reference": {
         "par": "anm.par"
       },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
-      },
       "new@CUDA": {
         "interaction_type": "DNANM",
         "topology": "mixed.top"
@@ -80,12 +74,6 @@
       },
       "reference": {
         "par": "anmt.par"
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
       }
     },
     "RNACT": {
@@ -108,12 +96,6 @@
       "common": {
         "bending_k": 30.0,
         "torsion_k": 30.0
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
       }
     }
   },

@@ -48,12 +48,6 @@
       "reference": {
         "par": "anm.par"
       },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
-      },
       "new@CUDA": {
         "interaction_type": "DNANM",
         "topology": "mixed.top"
@@ -82,12 +76,6 @@
         "par": "anmt.par",
         "kb": 20.0,
         "kt": 20.0
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
       }
     },
     "DNANM": {
@@ -104,12 +92,6 @@
       },
       "reference": {
         "par": "anm.par"
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
       }
     },
     "ACT": {
@@ -132,12 +114,6 @@
         "par": "anmt.par",
         "kb": 20.0,
         "kt": 20.0
-      },
-      "xfail": {
-        "*@CUDA_double": {
-          "reason": "the ANM interactions require use_edge = true on CUDA, and use_edge is not available in double precision (MD_CUDABackend: 'use_edge and double precision are not compatible')",
-          "match": "use_edge"
-        }
       },
       "new@CUDA": {
         "interaction_type": "DNACT",
