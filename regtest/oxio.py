@@ -2,22 +2,45 @@
 import numpy as np
 
 
-def read_energy(path):
-    """Return the energy file as an array (columns: time, potential, kinetic, total, ...)."""
-    rows = []
+def read_energy(path, with_gpu=False):
+    """Return the energy file as an array (columns: time, potential, kinetic, total, ...).
+    With with_gpu, also return the 'CUDA_energy:' values that CUDA_print_energy appends (nan if absent)."""
+    rows, gpu = [], []
     with open(path) as f:
         for line in f:
+            g = float('nan')
+            if 'CUDA_energy:' in line:
+                line, rest = line.split('CUDA_energy:', 1)
+                try:
+                    g = float(rest.split()[0])
+                except (ValueError, IndexError):
+                    pass
             s = line.split()
             if not s or s[0].startswith('#'):
                 continue
             try:
                 rows.append([float(x) for x in s])
+                gpu.append(g)
             except ValueError:
                 continue
     if not rows:
-        return np.zeros((0, 4))
-    n = min(len(r) for r in rows)
-    return np.array([r[:n] for r in rows])
+        arr = np.zeros((0, 4))
+    else:
+        n = min(len(r) for r in rows)
+        arr = np.array([r[:n] for r in rows])
+    return (arr, np.array(gpu)) if with_gpu else arr
+
+
+def read_columns(path):
+    """Plain whitespace-separated numeric file (e.g. a data_output observable file)."""
+    rows = []
+    with open(path) as f:
+        for line in f:
+            try:
+                rows.append([float(x) for x in line.split()])
+            except ValueError:
+                continue
+    return np.array(rows)
 
 
 def read_trajectory(path, cols=9):

@@ -22,6 +22,7 @@ SETTINGS = {  # system: (case providing the inputs, steps)
     'ubq_dna': ('DNACT', 100000),
     'ubq_rna': ('RNACT', 100000),
     'cage': ('DNACT', 20000),
+    'ubq_hybrid': ('NACT', 100000),
 }
 
 
@@ -33,7 +34,7 @@ def main():
         cfg = json.load(open(os.path.join(sysdir, 'config.json')))
         case = dict(cfg['cases'][case_name], system=name, name=f'{name}/{case_name}', dir=sysdir, sys=cfg)
         with tempfile.TemporaryDirectory() as tmp:
-            run_tests.make_input(case, 'new', 'CPU', {'steps': steps, 'seed': 4242, 'conf_file': 'conf.dat',
+            run_tests.make_input(case, ['new'], 'CPU', {'steps': steps, 'seed': 4242, 'conf_file': 'conf.dat',
                                                       'print_energy_every': steps // 10,
                                                       'print_conf_interval': steps}, tmp)
             subprocess.run([binary, 'input'], cwd=tmp, check=True, stdout=subprocess.DEVNULL,
