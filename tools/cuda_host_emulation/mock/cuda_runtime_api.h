@@ -49,10 +49,11 @@ __device__ void __syncthreads();
 #ifndef HOST_EMULATION
 __device__ float __int_as_float(int); __device__ int __float_as_int(float);
 #endif
+// defined inline, as in the real cuda_runtime.h: the symbols may be in an anonymous namespace (CUDA_DRH.cuh)
 #ifndef HOST_EMULATION
-template<class T> cudaError_t cudaMemcpyToSymbol(const T &, const void *, size_t, size_t = 0, cudaMemcpyKind = cudaMemcpyHostToDevice);
+template<class T> cudaError_t cudaMemcpyToSymbol(const T &, const void *, size_t, size_t = 0, cudaMemcpyKind = cudaMemcpyHostToDevice) { return 0; }
 #endif
-template<class T> cudaError_t cudaMemcpyFromSymbol(void *, const T &, size_t, size_t = 0, cudaMemcpyKind = cudaMemcpyDeviceToHost);
+template<class T> cudaError_t cudaMemcpyFromSymbol(void *, const T &, size_t, size_t = 0, cudaMemcpyKind = cudaMemcpyDeviceToHost) { return 0; }
 #ifndef HOST_EMULATION
 cudaError_t cudaMemcpy(void *, const void *, size_t, cudaMemcpyKind);
 #endif

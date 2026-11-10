@@ -2,7 +2,8 @@
 # Checks the CUDA ANM code without a GPU.
 # usage: build.sh <oxDNA checkout> <strict CPU build dir (cmake with CMAKE_CXX_COMPILER_LAUNCHER adding -fno-fast-math -ffp-contract=off)>
 #  1. parses the CUDA sources with clang (host and device side, float and double) against the stub CUDA API in mock/
-#  2. builds test_anm_device (device functions vs ANMModel) and test_anm_kernels (whole kernels vs the CPU interaction)
+#  2. links the host objects of CUDAANMInteraction.cu and CUDADRHInteraction.cu together (duplicate symbols)
+#  3. builds test_anm_device (device functions vs ANMModel) and test_anm_kernels (whole kernels vs the CPU interaction)
 # Run: ./test_anm_kernels DNACT <topology> <conf> <parfile> [kb kt]
 set -e
 SRC=$1/src; BUILD=$2; HERE=$(cd "$(dirname "$0")" && pwd)
@@ -14,6 +15,17 @@ for f in CUDA/Interactions/CUDAANMInteraction.cu CUDA/Interactions/CUDADRHIntera
 		done
 	done
 done
+# 2. link the host objects of the .cu files that share device code into one library, as the real build does:
+#    kernels or device functions defined in a header included by two of them are then defined twice
+OBJ=$(mktemp -d)
+for def in "" "-DCUDA_DOUBLE_PRECISION"; do
+	for f in CUDAANMInteraction CUDADRHInteraction; do
+		(cd $SRC && $CLANG -x cuda --cuda-host-only $def -nocudainc -nocudalib --cuda-gpu-arch=sm_70 -include $HERE/mock/cuda_runtime_api.h -I$HERE/mock -Iextern -std=c++14 -Wno-everything -c CUDA/Interactions/$f.cu -o $OBJ/$f.o)
+	done
+	if [ "$(uname)" = Darwin ]; then UNDEF="-Wl,-undefined,dynamic_lookup"; else UNDEF=""; fi
+	$CLANG -shared $UNDEF $OBJ/CUDAANMInteraction.o $OBJ/CUDADRHInteraction.o -o $OBJ/liblinkcheck.so && echo "OK link CUDAANMInteraction + CUDADRHInteraction $def"
+done
+rm -rf $OBJ
 python3 - "$SRC" "$HERE" <<'PY'
 import sys
 src, here = sys.argv[1:]
