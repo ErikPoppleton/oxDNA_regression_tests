@@ -1,5 +1,5 @@
-// Runs the CUDA ANM kernels (edge-based and neighbour-matrix) on the host and compares the force and torque on every particle
-// with the CPU interaction.
+// Runs the CUDA ANM kernels (edge-based and neighbour-matrix) on the host and compares the force and torque on every particle,
+// and the total energy (sum of the w components / 2, as MD_CUDABackend computes it), with the CPU interaction.
 // usage: test_anm_kernels <interaction> <topology> <conf> <parfile|none> [kb kt]
 #define HOST_EMULATION
 #include "cuda_runtime_api.h"
@@ -117,9 +117,10 @@ int run(const std::string &interaction, bool torsion, const std::string &top, co
 	}
 
 	// CPU forces and torques, all pairs
+	double cpu_energy = 0.;
 	for(int i = 0; i < N; i++) {
 		for(int j = i + 1; j < N; j++) {
-			inter.pair_interaction(particles[i], particles[j], true, true);
+			cpu_energy += inter.pair_interaction(particles[i], particles[j], true, true);
 		}
 	}
 
@@ -238,6 +239,11 @@ int run(const std::string &interaction, bool torsion, const std::string &top, co
 			fscale[sp] = std::max(fscale[sp], (double) p->force.module());
 			tscale[sp] = std::max(tscale[sp], (double) p->torque.module());
 		}
+		// as MD_CUDABackend (CUDA_print_energy): every pair is counted twice in the w components
+		double gpu_energy = 0.;
+		for(int i = 0; i < N; i++) gpu_energy += F[i].w;
+		gpu_energy /= 2.;
+		printf("  %-8s energy       GPU %.10e  CPU %.10e  diff %.3e (per particle %.3e)\n", name, gpu_energy, cpu_energy, gpu_energy - cpu_energy, (gpu_energy - cpu_energy) / N);
 		const char *names[3] = {"DNA", "RNA", "amino acids"};
 		for(int sp = 0; sp < 3; sp++) {
 			if(fscale[sp] == 0 && tscale[sp] == 0) continue;
