@@ -93,10 +93,8 @@ def make_input(rundir, system, extra, steps, every, seed, build):
         if build.endswith('double'):
             inp.update({'backend_precision': 'double', 'use_edge': 0})
         else:
-            # the branch suite ran mixed with use_edge = 1; master's DNANM is run with the default kernels
-            inp.update({'backend_precision': 'mixed', 'use_edge': 0 if build.startswith('master') else 1})
-            if not build.startswith('master'):
-                inp['edge_n_forces'] = 1
+            # edge kernels, as in the regression suite; master's CUDA DNANM only implements this path
+            inp.update({'backend_precision': 'mixed', 'use_edge': 1, 'edge_n_forces': 1})
     os.makedirs(rundir, exist_ok=True)
     with open(os.path.join(rundir, 'input'), 'w') as f:
         for k, v in inp.items():
