@@ -123,7 +123,7 @@ cat "$OUT/runs/equipartition.md" >> "$SUMMARY" 2>/dev/null
 # tarball: everything but the trajectories (per-particle averages are in per_particle.npz) and the builds
 TAR="$OUT/oxdna_equipartition_$(date +%Y%m%d_%H%M).tar.gz"
 (cd "$OUT" && find . \( -path ./build -o -path ./master_src \) -prune -o -type f \( -name '*.md' -o -name '*.json' \
-    -o -name '*.npz' -o -name 'input' -o -name 'energy.dat' -o -name 'stdout.txt' -o -name '*.log' \) -print \
+    -o -name '*.npz' -o -name 'input' -o -name 'log.dat' -o -name 'energy.dat' -o -name 'stdout.txt' -o -name '*.log' \) -print \
     | tar -czf "$TAR" -T - 2>/dev/null; tar -czf build_logs.tar.gz build/*/cmake.log build/*/make.log 2>/dev/null)
 log "summary: $SUMMARY"
 log "tarball: $TAR"
