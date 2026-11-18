@@ -5,6 +5,7 @@
 #SBATCH --mem=16G
 #SBATCH --time=03:00:00
 #SBATCH --output=oxdna_equipartition_%j.log
+#SBATCH --export=ALL
 #
 # Equipartition check of the CUDA MD backend for protein systems (tools/equipartition.py): measures the
 # translational and rotational temperatures of amino acids and nucleotides from the velocities in the
@@ -19,6 +20,8 @@
 #   MASTER_SRC       oxDNA source tree of master. Default: exported from the "master" ref of <oxDNA checkout>
 #                    (git archive, the checkout is not touched). MASTER_SRC=none skips the master runs.
 #   CLUSTER_MODULES  modules to load before building (as in cluster_cuda.sh)
+#                    The job inherits the environment of the submitting shell (--export=ALL), so loading the
+#                    compiler and CUDA modules before sbatch also works (e.g. module load cuda/13.0 gcc/15).
 #   PYTHON           python3 with numpy (default: python3)
 #   JOBS             parallel build jobs / CPU simulations (default: $SLURM_CPUS_PER_TASK or nproc)
 #   GPU_JOBS         simultaneous simulations on the GPU (default: 4)
@@ -54,6 +57,14 @@ if [ -n "${CLUSTER_MODULES:-}" ]; then
     # shellcheck disable=SC2086
     module load $CLUSTER_MODULES || { echo "module load $CLUSTER_MODULES failed"; exit 2; }
 fi
+
+# the builds need a recent C++ compiler and the CUDA toolkit. A Slurm job only has them if it inherits the environment
+# of the shell it was submitted from (#SBATCH --export=ALL above, with the modules loaded before sbatch) or loads the
+# modules itself (CLUSTER_MODULES); otherwise CMake finds the system compiler and no CUDA, and fails
+if ! command -v nvcc > /dev/null 2>&1; then
+    echo "nvcc not found: load the CUDA and compiler modules before running sbatch, or set CLUSTER_MODULES (e.g. CLUSTER_MODULES=\"cuda/13.0 gcc/15\")" >&2
+    exit 2
+fi
 "$PYTHON" -c "import numpy" || { echo "PYTHON=$PYTHON has no numpy"; exit 2; }
 
 : > "$LOG"
@@ -77,8 +88,22 @@ MASTER_REV="$( [ "$MASTER_SRC" != none ] && git -C "$SRC" rev-parse --short mast
     echo "- test repo: $REPO ($(git -C "$REPO" rev-parse --short HEAD 2>/dev/null))"
     echo "- GPU: $(nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader 2>/dev/null | head -1)"
     echo "- nvcc: $(nvcc --version 2>/dev/null | tail -1)"
+    echo "- C++ compiler: $(${CXX:-c++} --version 2>/dev/null | head -1)"
+    echo "- cmake: $(cmake --version 2>/dev/null | head -1)"
     echo
 } > "$SUMMARY"
+
+_build_failed() {  # name, step (cmake or make): log the step that failed and the end of its log
+    local log_file="$OUT/build/$1/$2.log"
+    log "BUILD FAILED at the $2 step: $1 (see build/$1/$2.log)"
+    {
+        echo "- **build $1 FAILED at the $2 step** (build/$1/$2.log, last lines below)"
+        echo '```'
+        tail -25 "$log_file" 2>/dev/null
+        echo '```'
+    } >> "$SUMMARY"
+    tail -40 "$log_file" >> "$LOG" 2>/dev/null
+}
 
 build() {  # name, source, cmake args...
     local name="$1" src="$2"; shift 2
@@ -90,14 +115,15 @@ build() {  # name, source, cmake args...
     log "building $name ($*)"
     mkdir -p "$dir"
     # shellcheck disable=SC2086
-    if cmake -S "$src" -B "$dir" "$@" $CMAKE_EXTRA > "$dir/cmake.log" 2>&1 && make -C "$dir" -j"$JOBS" oxDNA > "$dir/make.log" 2>&1; then
-        log "built $dir/bin/oxDNA"
-    else
-        log "BUILD FAILED: $name (see $dir/make.log)"
-        echo "- **build $name FAILED**" >> "$SUMMARY"
-        tail -30 "$dir/make.log" >> "$LOG" 2>/dev/null
+    if ! cmake -S "$src" -B "$dir" "$@" $CMAKE_EXTRA > "$dir/cmake.log" 2>&1; then
+        _build_failed "$name" cmake
         return 1
     fi
+    if ! make -C "$dir" -j"$JOBS" oxDNA > "$dir/make.log" 2>&1; then
+        _build_failed "$name" make
+        return 1
+    fi
+    log "built $dir/bin/oxDNA"
 }
 
 build cpu "$SRC" -DCUDA=OFF || exit 1
