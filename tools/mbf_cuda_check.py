@@ -74,7 +74,7 @@ def ramp_params(cap):
 
 MD_F0, MD_RATE, MD_STEPS = 1., 0.002, 2000       # ramp_md: the cap grows from 1 to 5
 NVE_STEPS, NVE_DT = 10000, 0.001
-FLOOR = {'mixed': 2e-5, 'double': 1e-6}           # energies per particle
+FLOOR = {'mixed': 2e-5, 'double': 3e-6}           # energies per particle (energy.dat prints 6 decimals)
 
 
 def write_input(path, keys):
@@ -103,15 +103,37 @@ def case_input(system, inter, backend, plugins):
     return inp
 
 
+OUTPUTS = ('energy.dat', 'log.dat', 'trajectory.dat', 'last_conf.dat', 'error_conf.dat', 'stdout.txt', 'exit_code')
+
+
 def run(binary, rundir, inp, timeout=3600):
     os.makedirs(rundir, exist_ok=True)
+    # outputs of an earlier run in the same directory must not be mistaken for the results of this one
+    for f in OUTPUTS:
+        if os.path.exists(os.path.join(rundir, f)):
+            os.remove(os.path.join(rundir, f))
     write_input(os.path.join(rundir, 'input'), inp)
     with open(os.path.join(rundir, 'stdout.txt'), 'w') as out:
         try:
             rc = subprocess.run([binary, 'input'], cwd=rundir, stdout=out, stderr=subprocess.STDOUT, timeout=timeout).returncode
         except subprocess.TimeoutExpired:
             rc = 'timeout'
+    with open(os.path.join(rundir, 'exit_code'), 'w') as f:
+        f.write(f'{rc}\n')
     return rc
+
+
+def run_error(rundir):
+    """None if the run in rundir finished normally, otherwise a description of what went wrong."""
+    path = os.path.join(rundir, 'exit_code')
+    if not os.path.exists(path):
+        return 'not run'
+    rc = open(path).read().strip()
+    if rc == '0':
+        return None
+    log = os.path.join(rundir, 'log.dat')
+    errs = [l.strip() for l in open(log) if 'ERROR' in l] if os.path.exists(log) else []
+    return f'exit code {rc}' + (f': {errs[-1]}' if errs else '')
 
 
 def conf_with_time(src, dst, t):
@@ -250,7 +272,7 @@ def cmd_run(a):
 # ---------------------------------------------------------------------------------------------------------------- analyze
 def energies(rd, gpu=False):
     path = os.path.join(rd, 'energy.dat')
-    if not os.path.exists(path):
+    if run_error(rd) is not None or not os.path.exists(path):
         return None
     en, g = oxio.read_energy(path, with_gpu=True)
     if len(en) == 0:
@@ -272,6 +294,14 @@ def cmd_analyze(a):
     a.out = os.path.abspath(a.out)
     rows, results = [], {}
 
+    def why(*rundirs):
+        """the error of the first failed run among rundirs"""
+        for rd in rundirs:
+            err = run_error(rd)
+            if err:
+                return f'{os.path.relpath(rd, a.out)}: {err}'
+        return 'missing data'
+
     def add(case, backend, check, ok, msg):
         status = 'PASS' if ok else ('FAIL' if ok is not None else 'ERROR')
         rows.append((case, backend, check, status, msg))
@@ -289,7 +319,7 @@ def cmd_analyze(a):
             add(name, 'cpu', 'ramp', ok, f'E(cap active) {e["e0_cap"][0, 1]:.6f} vs uncapped {e["e0_nocap"][0, 1]:.6f}; '
                 f'ramp at t = {RAMP_T}: {e["ramp"][0, 1]:.6f}, constant {cap:g}: {e["const_T"][0, 1]:.6f}')
         else:
-            add(name, 'cpu', 'ramp', None, 'missing CPU energies')
+            add(name, 'cpu', 'ramp', None, why(*(os.path.join(cpu, k) for k in e)))
         for prec in precisions:
             pdir = os.path.join(cdir, prec)
             if not os.path.isdir(pdir):
@@ -298,7 +328,7 @@ def cmd_analyze(a):
             # e0: GPU vs host on the same configuration (row 1 of a one-step run)
             g = {k: energies(os.path.join(pdir, k), gpu=True) for k in ('e0_nocap', 'e0_cap', 'ramp', 'const_T', 'const_T1')}
             if any(v is None or len(v[0]) < 2 or not np.isfinite(v[1][1]) for v in g.values()):
-                add(name, prec, 'e0', None, 'missing GPU energies (CUDA_print_energy)')
+                add(name, prec, 'e0', None, why(*(os.path.join(pdir, k) for k in g)))
                 continue
             d_free = g['e0_nocap'][1][1] - g['e0_nocap'][0][1, 1]
             d_cap = g['e0_cap'][1][1] - g['e0_cap'][0][1, 1]
@@ -306,19 +336,25 @@ def cmd_analyze(a):
             add(name, prec, 'e0', abs(d_cap) <= tol,
                 f'GPU - host: capped {d_cap:+.2e}, uncapped {d_free:+.2e} (tolerance {tol:.1e}); '
                 f'capped host {g["e0_cap"][0][1, 1]:.6f} (CPU backend {e["e0_cap"][0, 1]:.6f})' if e['e0_cap'] is not None else '')
-            # ramp: host and GPU must use the cap of the same step
+            # ramp: the energy line at t = T + 1 has the GPU energy computed during step T (with the cap of step T) and the
+            # host energy computed at output time (with the cap of step T + 1), both for the same positions. Each must
+            # be exactly the energy of a constant cap of one of the two steps
             host = {k: g[k][0][1, 1] for k in ('ramp', 'const_T', 'const_T1')}
             gpu = {k: g[k][1][1] for k in ('ramp', 'const_T', 'const_T1')}
             k_host = min(('const_T', 'const_T1'), key=lambda k: abs(host[k] - host['ramp']))
+            k_gpu = min(('const_T', 'const_T1'), key=lambda k: abs(gpu[k] - gpu['ramp']))
             sep = abs(gpu['const_T'] - gpu['const_T1'])
-            ok = abs(gpu['ramp'] - gpu[k_host]) <= max(floor, 1e-3 * sep) and sep > 10 * floor and abs(host['ramp'] - host[k_host]) < 1e-9
+            ok = abs(gpu['ramp'] - gpu[k_gpu]) <= max(floor, 1e-3 * sep) and sep > 10 * floor and abs(host['ramp'] - host[k_host]) < 1e-9
+            step = {'const_T': RAMP_T, 'const_T1': RAMP_T + 1}
             add(name, prec, 'ramp', ok,
-                f'host uses the cap of step {RAMP_T if k_host == "const_T" else RAMP_T + 1}; GPU ramp {gpu["ramp"]:.6f}, '
+                f'GPU uses the cap of step {step[k_gpu]}, host of step {step[k_host]}; GPU ramp {gpu["ramp"]:.6f}, '
                 f'GPU constant caps {gpu["const_T"]:.6f} (t = {RAMP_T}) / {gpu["const_T1"]:.6f} (t = {RAMP_T + 1})')
+            # energy change per unit of maximum force, for the one-step lag of ramp_md
+            slope = sep / (RAMP_FRAC * cap)
             # nve
             gn = nve_stats(os.path.join(pdir, 'nve'))
             if gn is None or cpu_nve is None:
-                add(name, prec, 'nve', None, 'missing NVE energies')
+                add(name, prec, 'nve', None, why(os.path.join(pdir, 'nve'), os.path.join(cpu, 'nve')))
             else:
                 nfloor = 3e-4 if prec == 'mixed' else 1e-4
                 ok = gn['finite'] and abs(gn['drift']) <= 3 * abs(cpu_nve['drift']) + nfloor and gn['fluct'] <= 3 * cpu_nve['fluct'] + nfloor
@@ -327,14 +363,17 @@ def cmd_analyze(a):
             # ramp_md
             r = energies(os.path.join(pdir, 'ramp_md'), gpu=True)
             if r is None:
-                add(name, prec, 'ramp_md', None, 'missing energies')
+                add(name, prec, 'ramp_md', None, why(os.path.join(pdir, 'ramp_md')))
             else:
                 en, gg = r
                 ok_rows = np.isfinite(gg)
                 diff = np.abs(gg[ok_rows] - en[ok_rows, 1])
-                ok = len(diff) > 0 and diff.max() <= tol
+                # the GPU energy of each line was computed with the cap of the previous step (see ramp): allow for the
+                # change of the cap over one step, estimated from the e0 configuration with a generous factor
+                lag = 10 * slope * MD_RATE
+                ok = len(diff) > 0 and diff.max() <= tol + lag
                 add(name, prec, 'ramp_md', ok, f'{len(diff)} steps, max |GPU - host| {diff.max() if len(diff) else float("nan"):.2e} '
-                    f'(tolerance {tol:.1e}) while the cap grows from {MD_F0:g} to {MD_F0 + MD_RATE * MD_STEPS:g}')
+                    f'(tolerance {tol:.1e} + one-step lag {lag:.1e}) while the cap grows from {MD_F0:g} to {MD_F0 + MD_RATE * MD_STEPS:g}')
 
     lines = ['# max_backbone_force CPU/CUDA consistency', '',
              '| case | backend | check | status | details |', '|---|---|---|---|---|']
