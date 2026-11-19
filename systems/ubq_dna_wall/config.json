@@ -1,0 +1,67 @@
+{
+ "description": "ubq_dna (ubiquitin next to a 12-bp DNA duplex) with two amino acids moved inside the protein-DNA excluded-volume walls (tools/make_ubq_dna_wall.py): amino acid 31 in the quartic part of the backbone wall of nucleotide 98, amino acid 32 in the Lennard-Jones part of the base wall of nucleotide 97. Checks the strength of these walls (1 on the CPU; master's CUDA DNANM used 2, oxDNA PR #240): the CUDA energy0 check compares the GPU and host energies, which a factor 2 would change by 9e-3 per particle, and the nve check needs consistent forces.",
+ "protein_range": [
+  0,
+  76
+ ],
+ "nucleic_range": [
+  76,
+  100
+ ],
+ "energy0_conf": "wall.dat",
+ "cost": 0.14,
+ "common": {
+  "conf_file": "wall.dat",
+  "topology": "hybrid.top",
+  "dt": 0.002
+ },
+ "stages": {
+  "nve": {
+   "steps": 10000,
+   "print_every": 100,
+   "dt": 0.0005,
+   "smoke": {
+    "steps": 2000,
+    "print_every": 20
+   }
+  }
+ },
+ "cases": {
+  "DNANM": {
+   "description": "protein + DNA with amino acids inside the protein-DNA walls: DNANM",
+   "quick": true,
+   "smoke": true,
+   "stages_enabled": [
+    "energy0",
+    "nve"
+   ],
+   "common": {
+    "interaction_type": "DNANM",
+    "parfile": "anm.par"
+   },
+   "reference": {
+    "par": "anm.par"
+   }
+  },
+  "DNACT": {
+   "description": "protein + DNA with amino acids inside the protein-DNA walls: DNACT",
+   "quick": true,
+   "smoke": true,
+   "stages_enabled": [
+    "energy0",
+    "nve"
+   ],
+   "common": {
+    "interaction_type": "DNACT",
+    "parfile": "anmt.par",
+    "bending_k": 20.0,
+    "torsion_k": 20.0
+   },
+   "reference": {
+    "par": "anmt.par",
+    "kb": 20.0,
+    "kt": 20.0
+   }
+  }
+ }
+}

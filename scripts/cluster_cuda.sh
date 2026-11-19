@@ -29,6 +29,8 @@
 #   SKIP_BUILD=1     reuse the builds already in <outdir>/build
 #   SKIP_DOUBLE=1    do not build/test the CUDA_DOUBLE version
 #   CONTINUE_ON_SMOKE_FAILURE=1   run the full suites even if the smoke test fails
+#   ONLY             space separated globs on "system/case" or "system" passed to run_tests.py --only (default: all),
+#                    e.g. ONLY="ubq_dna_wall"
 #   OLD_OXDNA        path to an original anm-oxdna CPU binary (scripts/build_old.sh): adds an
 #                    "original CPU vs current CUDA" run of the suite
 set -uo pipefail
@@ -122,7 +124,8 @@ build() {  # name, cmake args...
 suite() {  # name, run_tests.py args...
     local name="$1"; shift
     log "running $name: run_tests.py $*"
-    "$PYTHON" "$REPO/run_tests.py" --jobs "$JOBS" --gpu-jobs "$GPU_JOBS" --out "$OUT/results/$name" "$@" > "$OUT/results_$name.log" 2>&1
+    # shellcheck disable=SC2086
+    "$PYTHON" "$REPO/run_tests.py" --jobs "$JOBS" --gpu-jobs "$GPU_JOBS" --out "$OUT/results/$name" "$@" ${ONLY:+--only $ONLY} > "$OUT/results_$name.log" 2>&1
     local rc=$?
     local res="$OUT/results/$name/summary.md"
     {
